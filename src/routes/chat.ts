@@ -28,22 +28,14 @@ export default async function chatRoutes(fastify: FastifyInstance): Promise<void
     async (request, reply) => {
       const sse = new SseStream(reply);
 
-      // Guard so an LLM error is reported to the client exactly once, whether
-      // it arrives via onError or a thrown iteration.
-      let notified = false;
-      const notifyError = (error: unknown) => {
-        fastify.log.error(error);
-        if (notified) return;
-        notified = true;
-        sse.write(ERROR_MESSAGE);
-      };
-
-      const stream = streamAssistantReply(request.body.message, notifyError);
-
       try {
-        for await (const delta of stream.textStream) sse.write(delta);
+        for await (const delta of streamAssistantReply(request.body.message)) {
+          sse.write(delta);
+        }
       } catch (error) {
-        notifyError(error);
+        // OpenAI/API errors propagate here; report gracefully over the stream.
+        fastify.log.error(error);
+        sse.write(ERROR_MESSAGE);
       } finally {
         sse.close();
       }
