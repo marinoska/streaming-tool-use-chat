@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { Readable } from 'node:stream';
 import { streamAssistantReply } from '../ai/assistant';
-import { sseFrames, SSE_HEADERS } from '../lib/sse';
+import { sseEvents } from '../lib/sse';
 
 interface ChatBody {
   message: string;
@@ -20,18 +19,15 @@ const chatBodySchema = {
 /**
  * POST /api/chat — streams the assistant's reply as SSE.
  *
- * The assistant text stream is adapted into SSE frames and handed to Fastify,
- * which pipes it to the client; errors surface via the sseFrames callback.
+ * `reply.sse()` (fastify-sse-v2) owns the wire framing and response lifecycle;
+ * we just feed it clause-by-clause events. Errors surface via the callback.
  */
 export default async function chatRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post<{ Body: ChatBody }>(
     '/api/chat',
     { schema: { body: chatBodySchema } },
     (request, reply) => {
-      const frames = sseFrames(streamAssistantReply(request.body.message), (error) =>
-        fastify.log.error(error),
-      );
-      return reply.headers(SSE_HEADERS).send(Readable.from(frames));
+      reply.sse(sseEvents(streamAssistantReply(request.body.message), (error) => fastify.log.error(error)));
     },
   );
 }

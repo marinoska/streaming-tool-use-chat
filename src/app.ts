@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from 'fastify';
+import { FastifySSEPlugin } from 'fastify-sse-v2';
 import healthRoutes from './routes/health';
 import chatRoutes from './routes/chat';
 
@@ -12,6 +13,7 @@ import chatRoutes from './routes/chat';
 export function buildApp(): FastifyInstance {
   const app = Fastify({ logger: false });
 
+  app.register(FastifySSEPlugin); // adds reply.sse() for Server-Sent Events
   app.register(healthRoutes);
   app.register(chatRoutes);
 
