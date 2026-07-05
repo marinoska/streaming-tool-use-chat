@@ -2,6 +2,12 @@ import type { EventMessage } from 'fastify-sse-v2';
 
 const ERROR_MESSAGE = "Sorry — I couldn't complete that request due to an internal error.";
 
+interface SseOptions {
+  onError?: (error: unknown) => void;
+  /** Optional event emitted after the text, before `[DONE]` (e.g. tool timing). */
+  finalEvent?: () => EventMessage | null;
+}
+
 /**
  * Adapt the assistant's text stream into SSE events for `reply.sse()`, which
  * owns the wire framing. Each model token is forwarded as it arrives, so the
@@ -16,12 +22,14 @@ const ERROR_MESSAGE = "Sorry — I couldn't complete that request due to an inte
  */
 export async function* sseEvents(
   text: AsyncIterable<string>,
-  onError?: (error: unknown) => void,
+  { onError, finalEvent }: SseOptions = {},
 ): AsyncGenerator<EventMessage> {
   try {
     for await (const delta of text) {
       if (delta) yield { data: delta };
     }
+    const event = finalEvent?.();
+    if (event) yield event;
   } catch (error) {
     onError?.(error);
     yield { data: ERROR_MESSAGE };

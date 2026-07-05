@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { config } from '../config';
-import { runnableTools } from './tools';
+import { createRunnableTools, type ToolTiming } from './tools';
 
 const openai = new OpenAI(); // reads OPENAI_API_KEY from the environment
 
@@ -26,14 +26,23 @@ For anything outside these three capabilities (poems, general knowledge, weather
  * `runTools()` drives the whole exchange: it streams the model's turns, runs
  * any requested tools concurrently (via their `function` callbacks), feeds the
  * results back, and loops until the model answers with plain text — we just
- * forward that text as it arrives. OpenAI errors propagate to the caller.
+ * forward that text as it arrives. OpenAI errors propagate to the caller. Tool
+ * call durations are recorded into `timings` as a side effect.
+ *
+ * `parallel` maps to the model's `parallel_tool_calls`: true (default) lets the
+ * model batch calls so the SDK runs them concurrently; false forces one tool
+ * per turn — used to contrast timings in the demo.
  */
-export async function* streamAssistantReply(message: string): AsyncGenerator<string> {
+export async function* streamAssistantReply(
+  message: string,
+  timings: ToolTiming[],
+  parallel = true,
+): AsyncGenerator<string> {
   const runner = openai.chat.completions.runTools({
     model: config.openaiModel,
     stream: true,
-    parallel_tool_calls: true, // let the model batch calls; the SDK then runs them concurrently
-    tools: runnableTools,
+    parallel_tool_calls: parallel,
+    tools: createRunnableTools(timings),
     messages: [
       { role: 'system', content: SYSTEM_PROMPT },
       { role: 'user', content: message },

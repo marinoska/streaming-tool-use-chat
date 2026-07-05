@@ -24,3 +24,6 @@ coverage/
 .DS_Store
 .idea/
 *.swp
+
+# this project uses npm; ignore stray pnpm lockfile
+pnpm-lock.yaml

@@ -5,10 +5,11 @@
  * by token into a fresh bubble. This is the only file that touches both layers.
  */
 import { streamChat } from './chatClient';
-import { addMessage, appendText, setPending, setComposerEnabled } from './ui';
+import { addMessage, appendText, setPending, setComposerEnabled, showToolTiming } from './ui';
 
 const composer = document.getElementById('composer') as HTMLFormElement;
 const input = document.getElementById('input') as HTMLInputElement;
+const sequential = document.getElementById('sequential') as HTMLInputElement;
 
 composer.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -24,7 +25,8 @@ composer.addEventListener('submit', async (event) => {
   setPending(reply, true);
 
   try {
-    for await (const token of streamChat(message)) appendText(reply, token);
+    const options = { parallel: !sequential.checked, onTools: showToolTiming };
+    for await (const token of streamChat(message, options)) appendText(reply, token);
   } catch (error) {
     appendText(reply, `⚠️ ${(error as Error).message}`);
   } finally {

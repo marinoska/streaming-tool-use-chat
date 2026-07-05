@@ -1,9 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { streamAssistantReply } from '../ai/assistant';
+import { toolTimingEvent, type ToolTiming } from '../ai/tools';
 import { sseEvents } from '../lib/sse';
 
 interface ChatBody {
   message: string;
+  /** Optional; defaults to true. When false, tools run one at a time (demo/comparison). */
+  parallel?: boolean;
 }
 
 // Schema-based validation: Fastify replies 400 automatically when `message`
@@ -13,6 +16,7 @@ const chatBodySchema = {
   required: ['message'],
   properties: {
     message: { type: 'string', minLength: 1 },
+    parallel: { type: 'boolean' },
   },
 };
 
@@ -27,7 +31,14 @@ export default async function chatRoutes(fastify: FastifyInstance): Promise<void
     '/api/chat',
     { schema: { body: chatBodySchema } },
     (request, reply) => {
-      reply.sse(sseEvents(streamAssistantReply(request.body.message), (error) => fastify.log.error(error)));
+      const { message, parallel = true } = request.body;
+      const timings: ToolTiming[] = [];
+      reply.sse(
+        sseEvents(streamAssistantReply(message, timings, parallel), {
+          onError: (error) => fastify.log.error(error),
+          finalEvent: () => toolTimingEvent(timings),
+        }),
+      );
     },
   );
 }
