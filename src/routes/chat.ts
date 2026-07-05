@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
+import { Readable } from 'node:stream';
 import { streamAssistantReply } from '../ai/assistant';
-import { SseStream } from '../lib/sse';
+import { sseFrames, SSE_HEADERS } from '../lib/sse';
 
 interface ChatBody {
   message: string;
@@ -16,29 +17,21 @@ const chatBodySchema = {
   },
 };
 
-const ERROR_MESSAGE = "Sorry — I couldn't complete that request due to an internal error.";
-
 /**
  * POST /api/chat — streams the assistant's reply as SSE.
+ *
+ * The assistant text stream is adapted into SSE frames and handed to Fastify,
+ * which pipes it to the client; errors surface via the sseFrames callback.
  */
 export default async function chatRoutes(fastify: FastifyInstance): Promise<void> {
   fastify.post<{ Body: ChatBody }>(
     '/api/chat',
     { schema: { body: chatBodySchema } },
-    async (request, reply) => {
-      const sse = new SseStream(reply);
-
-      try {
-        for await (const delta of streamAssistantReply(request.body.message)) {
-          sse.write(delta);
-        }
-      } catch (error) {
-        // OpenAI/API errors propagate here; report gracefully over the stream.
-        fastify.log.error(error);
-        sse.write(ERROR_MESSAGE);
-      } finally {
-        sse.close();
-      }
+    (request, reply) => {
+      const frames = sseFrames(streamAssistantReply(request.body.message), (error) =>
+        fastify.log.error(error),
+      );
+      return reply.headers(SSE_HEADERS).send(Readable.from(frames));
     },
   );
 }
