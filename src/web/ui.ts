@@ -43,9 +43,8 @@ export function showToolTiming(summary: ToolSummary): void {
 }
 
 function formatToolTiming({ tools, spanMs }: ToolSummary): string {
-  const combinedMs = tools.reduce((total, tool) => total + tool.ms, 0);
   const breakdown = tools.map((tool) => `${tool.name} ${tool.ms}ms`).join(' · ');
-  return `🔧 ${tools.length} tools ran in ${spanMs}ms (${combinedMs}ms combined) — ${breakdown}`;
+  return `🔧 ${tools.length} tools ran in ${spanMs}ms — ${breakdown}`;
 }
 
 /** Append a list item with the given class + text, keeping the log scrolled to the end. */
