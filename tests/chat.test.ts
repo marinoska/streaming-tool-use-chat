@@ -48,7 +48,8 @@ async function chatCollectSSE(message: string): Promise<{
 
     for (const line of lines) {
       if (line.startsWith('data: ')) {
-        const data = line.slice(6).trim();
+        // fix: the spaces are valid content
+        const data = line.slice(6);
         if (data && data !== '[DONE]') {
           chunks.push(data);
         }
@@ -58,7 +59,8 @@ async function chatCollectSSE(message: string): Promise<{
 
   // Process any remaining buffer
   if (buffer.startsWith('data: ')) {
-    const data = buffer.slice(6).trim();
+    // fix: the spaces are valid content
+    const data = buffer.slice(6);
     if (data && data !== '[DONE]') {
       chunks.push(data);
     }

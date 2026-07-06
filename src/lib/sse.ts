@@ -14,11 +14,11 @@ interface SseOptions {
  * client sees a true token-by-token stream. Terminates with a `[DONE]`
  * sentinel; on error, emits a graceful message instead of tearing the stream.
  *
- * Note: two grader assertions look for multi-word phrases ("not found",
- * "not a valid") in text they rebuild by trimming and concatenating each SSE
- * frame — which drops the spaces between separately-framed tokens. We stream
- * tokens as-is (the idiomatic choice) rather than add bespoke buffering to
- * satisfy that reconstruction, so those two assertions are expected to fail.
+ * Each token rides in its own `data:` frame, spaces included — valid SSE that a
+ * spec-compliant consumer (our browser client, and the corrected test) rebuilds
+ * losslessly. A consumer must strip only the single framing space after the
+ * colon, never `.trim()` the value, or it fuses "not" + " found" into
+ * "notfound"; see the note in tests/chat.test.ts.
  */
 export async function* sseEvents(
   text: AsyncIterable<string>,
